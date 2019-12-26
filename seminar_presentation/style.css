@@ -1,0 +1,56 @@
+/* front slide */
+.reveal img.logo {
+    border: none;
+    box-shadow: none;
+    margin-top: 40px;
+}
+.reveal h1.title {
+    font-size: 2em;
+    color: #191141;
+    text-transform: none;
+}
+.reveal div.author-box {
+    background-color: #191141;
+    padding: 20px;
+    margin: 30px;
+}
+.reveal .author {
+    font-size: 0.6em;
+    color: white;
+    margin: 0;
+}
+.reveal .author-email {
+    font-size: 0.6em;
+    color: white;
+    font-family: 'Courier New', Courier, monospace;
+    margin: 0;
+}
+.reveal .author-affiliation {
+    font-size: 0.6em;
+    color: white;
+    margin-bottom: 0;
+}
+
+
+
+/* other slides */
+.reveal h1 {
+    font-size: 2em;
+    color: #191141;
+    text-transform: none;
+}
+
+.reveal h2 {
+    font-size: 1.5em;
+    color: #191141;
+    text-transform: none;
+}
+
+.reveal ul li {
+    font-size: 0.7em;
+    background-color: white;
+}
+
+.reveal figure figcaption {
+    display: none;
+}

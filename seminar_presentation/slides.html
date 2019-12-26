@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="pandoc">
+  <meta name="author" content="Riccardo Miccini">
+  <meta name="keywords" content="Spatial Audio, HRTF, Deep Learning">
+  <title>HRTF Individualization using Deep Learning</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+  <link rel="stylesheet" href="https://revealjs.com/css/reset.css">
+  <link rel="stylesheet" href="https://revealjs.com/css/reveal.css">
+  <style>
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
+  <link rel="stylesheet" href="https://revealjs.com/css/theme/white.css" id="theme">
+  <link rel="stylesheet" href="style.css"/>
+  <!-- Printing and PDF exports -->
+  <script>
+    var link = document.createElement( 'link' );
+    link.rel = 'stylesheet';
+    link.type = 'text/css';
+    link.href = window.location.search.match( /print-pdf/gi ) ? 'https://revealjs.com/css/print/pdf.css' : 'https://revealjs.com/css/print/paper.css';
+    document.getElementsByTagName( 'head' )[0].appendChild( link );
+  </script>
+  <!--[if lt IE 9]>
+  <script src="https://revealjs.com/lib/js/html5shiv.js"></script>
+  <![endif]-->
+</head>
+
+<body>
+  <div class="reveal">
+    <div class="slides">
+
+            <section id="title-slide">
+        <h1 class="title">HRTF Individualization using Deep Learning</h1>
+
+        <div class="author-box">
+                    <p class="author">Riccardo Miccini</p>
+          <p class="author-email">rmicci18@student.aau.dk</p>
+          <p class="author-affiliation">Department of Architecture, Design and Media Technology</p>
+                  </div>
+        <img class="logo" src="aau_logo.png">
+      </section>
+      
+      <section><section id="introduction" class="title-slide slide level1"><h1>Introduction</h1></section><section id="head-related-transfer-function" class="slide level2">
+      <h2>Head-related transfer function</h2>
+      <ul>
+      <li>Spectral cues allowing spatial hearing</li>
+      <li>Frequency-domain transform of HRIR</li>
+      <li>Depends on individual characteristics of torso, head, pinnae…</li>
+      </ul>
+      <p><img data-src="img/hrtf_example1.png" alt="HRTF example" /> <img data-src="img/hrtf_example2.png" alt="HRTF example" /></p>
+      </section><section id="motivation" class="slide level2">
+      <h2>Motivation</h2>
+      <ul>
+      <li>Increasing number of applications for VR</li>
+      <li>Required for immersive experience</li>
+      <li>Measuring HRTFs is costly and time consuming</li>
+      </ul>
+      <figure>
+      <img data-src="img/hrtf_meas.jpg" alt="" /><figcaption>HRTF measurement</figcaption>
+      </figure>
+      </section><section id="deep-learning" class="slide level2">
+      <h2>Deep Learning</h2>
+      <ul>
+      <li>Branch of Machine Learning</li>
+      <li>Investigates models based on artificial neural networks</li>
+      <li>Inspired by biological systems</li>
+      <li>Recent resurgence</li>
+      </ul>
+      </section><section id="individualization-tasks" class="slide level2">
+      <h2>Individualization tasks</h2>
+      <ul>
+      <li>Selection</li>
+      <li>Adaptation</li>
+      <li>Regression/Synthesis</li>
+      </ul>
+      </section><section id="individualization-approaches" class="slide level2">
+      <h2>Individualization approaches</h2>
+      <ul>
+      <li>Measurement</li>
+      <li>Numerical analisys</li>
+      <li>Anthropometric measurements</li>
+      <li>Perceptual feedback</li>
+      </ul>
+      </section></section>
+      <section><section id="state-of-the-art" class="title-slide slide level1"><h1>State of the Art</h1></section><section id="yamamoto-et-al.-2017" class="slide level2">
+      <h2>Yamamoto et al., 2017</h2>
+      <ul>
+      <li>Variational autoencoder with adaptive layers, 3D convolutional layers</li>
+      <li>Input data: HRTF+HRIR (5x5x128x4 patch), subject label (one-hot encoded vector), direction (26-dimensional vector)</li>
+      <li>Training stage: reconstruct HRTFs, derive individual and non-individual factors</li>
+      <li>Usage stage: use decoder to generate HRTF, calibrate individual factors using perceptual test</li>
+      </ul>
+      <figure>
+      <img data-src="img/yamamoto2017.png" alt="" /><figcaption>Yamamoto2017</figcaption>
+      </figure>
+      </section><section id="chen-et-al.-2019" class="slide level2">
+      <h2>Chen et al., 2019</h2>
+      <ul>
+      <li>Variational autoencoder + DNN, fully-connected layers</li>
+      <li>Input data: HRTF, anthropometrics features, azimuth</li>
+      <li>Training stage: reconstruct HRTFs, predict latent variables from anthropometric data</li>
+      <li>Usage stage: DNN derives latent variables from anthropometricss, VAE decoder generates HRTFs</li>
+      </ul>
+      <figure>
+      <img data-src="img/chen2019.png" alt="" /><figcaption>Chen2019</figcaption>
+      </figure>
+      </section></section>
+      <section><section id="techniques" class="title-slide slide level1"><h1>Techniques</h1></section><section id="hrtf-representation" class="slide level2">
+      <h2>HRTF representation</h2>
+      <ul>
+      <li>Single HRTF (vector)</li>
+      <li>Frequency <span class="math inline">×</span> Azimuth, Elevation (2D)</li>
+      <li><em>HRTF patch</em> (3D)</li>
+      <li>Spherical harmonics</li>
+      <li>Storage and exchange: SOFA format</li>
+      </ul>
+      <figure>
+      <img data-src="img/hrtf_patch.png" alt="" /><figcaption>HRTF patch</figcaption>
+      </figure>
+      </section><section id="user-data" class="slide level2">
+      <h2>User data</h2>
+      <ul>
+      <li>Anthropometric measurements</li>
+      <li>Orientation-specific measurements</li>
+      <li>3D models (point cloud, 2d depth-map)</li>
+      </ul>
+      <p><img data-src="img/anthro.png" alt="Anthropometrics" /> <img data-src="img/depthmap.png" alt="Depth map example" /></p>
+      </section><section id="dnn-models" class="slide level2">
+      <h2>DNN models</h2>
+      <ul>
+      <li>Variational autoencoder</li>
+      <li>Convolutional networks</li>
+      <li>Multi-layer perceptron</li>
+      <li>ResNet, Inception</li>
+      </ul>
+      <p><img data-src="img/vae.jpg" alt="VAE" /> <img data-src="img/conv.png" alt="Convolutional layer" /></p>
+      </section><section id="hrtf-datasets" class="slide level2">
+      <h2>HRTF Datasets</h2>
+      <ul>
+      <li>CIPIC (2001, HRIR, 34 subjects, anthropometrics)</li>
+      <li>HUTUBS (2019, HRIR+SH, 96 subjects, anthropometrics + 3D scans)</li>
+      <li>VIKING (2019, HRIR, 20 subjects, 3D scans)</li>
+      </ul>
+      <figure>
+      <img data-src="img/viking.jpg" alt="" /><figcaption>Viking dataset</figcaption>
+      </figure>
+      </section></section>
+      <section><section id="current-research" class="title-slide slide level1"><h1>Current research</h1></section><section id="experiment-framework" class="slide level2">
+      <h2>Experiment framework</h2>
+      <ul>
+      <li>Loading and processing data (HRTFs, ear pictures, anthropometric measurements, etc)</li>
+      <li>Generating and training deep learning models</li>
+      <li>Calculating and visualizing results</li>
+      <li>Libraries and tools: <code>keras</code>, <code>tensorflow</code>, <code>scipy</code>, <code>sklearn</code>, <code>seaborn</code>, <code>jupyter</code></li>
+      </ul>
+      <figure>
+      <img data-src="img/scipy.png" alt="" /><figcaption>Scipy packages</figcaption>
+      </figure>
+      </section><section id="experiment-log" class="slide level2">
+      <h2>Experiment log</h2>
+      <ul>
+      <li>Ears VAE: use depth-maps of ears as predictors (instead of anthropometric measurements)</li>
+      <li>HRTF VAE: auto-encode HRTF with different representations and assess correlation of latent dimensions with anthropometrics</li>
+      <li>PCA+DNN: similar to Chen et al., but using DNN to predict first few principal components of HRTF</li>
+      </ul>
+      <p><img data-src="img/res_earmorph.png" alt="Generated ear images" /> <img data-src="img/res_rechrtf.png" alt="Reconstructed HRTF slices" /> <img data-src="img/res_pairplot.png" alt="PCA pairplot" /></p>
+      </section><section id="results-and-limitations" class="slide level2">
+      <h2>Results and limitations</h2>
+      <ul>
+      <li>Ears VAE: subpar reconstruction, observed mild correlation between latent variables and anthropometrics</li>
+      <li>HRTF VAE: subpar reconstruction except with ResNet layers, almost no correlation with anthropometrics observed</li>
+      <li>PCA+DNN: promising, spectral distortion of 4.7 dB</li>
+      </ul>
+      <figure>
+      <img data-src="img/res_pcadnn.png" alt="" /><figcaption>PCA+DNN spectral distortion</figcaption>
+      </figure>
+      </section><section id="roadmap" class="slide level2">
+      <h2>Roadmap</h2>
+      <ul>
+      <li>Use ear images instead of anthropometrics in PCA+DNN</li>
+      <li>If better performances are achieved, substitute PCA with VAE decoder</li>
+      <li>Integrate data from other datasets</li>
+      <li>Implement testing environment</li>
+      </ul>
+      </section></section>
+      <section id="references" class="title-slide slide level1"><h1>References</h1><ul>
+      <li>C. I. Cheng, “Introduction to Head-Related Transfer Functions (HRTFs): Representations of HRTFs in Time, Frequency, and Space,” J Audio Eng Soc, vol. 49, no. 4, p. 19, 2001.</li>
+      <li>C. Guezenoc and R. Seguier, “HRTF Individualization: A Survey,” in Audio Engineering Society Convention 145, 2018.</li>
+      <li>K. Yamamoto and T. Igarashi, “Fully perceptual-based 3D spatial sound individualization with an adaptive variational autoencoder,” ACM Trans. Graph., vol. 36, no. 6, pp. 1–13, Nov. 2017.</li>
+      <li>T.-Y. Chen, T.-H. Kuo, and T.-S. Chi, “Autoencoding HRTFS for DNN Based HRTF Personalization Using Anthropometric Features,” in ICASSP 2019 - 2019 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP), Brighton, United Kingdom, 2019, pp. 271–275.</li>
+      <li>B. Fabian et al., “The HUTUBS head-related transfer function (HRTF) database,” 2019.</li>
+      <li>S. Spagnol, K. B. Purkhús, R. Unnthórsson, and S. K. Björnsson, “THE VIKING HRTF DATASET,” p. 6, 2019.</li>
+      </ul></section>
+    </div>
+  </div>
+
+  <script src="https://revealjs.com/js/reveal.js"></script>
+
+  <script>
+
+      // Full list of configuration options available at:
+      // https://github.com/hakimel/reveal.js#configuration
+      Reveal.initialize({
+        // Push each slide change to the browser history
+        history: true,
+        // Transition style
+        transition: 'linear', // none/fade/slide/convex/concave/zoom
+       // Parallax background image
+       parallaxBackgroundImage: 'aau_waves.png', // e.g. "'https://s3.amazonaws.com/hakim-static/reveal-js/reveal-parallax-1.jpg'"
+        // The "normal" size of the presentation, aspect ratio will be preserved
+        // when the presentation is scaled to fit different resolutions. Can be
+        // specified using percentage units.
+        width: "90%",
+
+        // Optional reveal.js plugins
+        dependencies: [
+          { src: 'https://revealjs.com/lib/js/classList.js', condition: function() { return !document.body.classList; } },
+          { src: 'https://revealjs.com/plugin/zoom-js/zoom.js', async: true },
+          { src: 'https://revealjs.com/plugin/notes/notes.js', async: true }
+        ]
+      });
+    </script>
+    </body>
+</html>
