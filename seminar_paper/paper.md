@@ -17,6 +17,7 @@ The [Methods](#methods) section details the computational techniques used in sel
 In [Results](#results), the applications and outcomes of the aforementioned techniques for replications and other experiments are discussed, with the purpose of assessing their effectiveness. 
 Finally, closing remarks as well as pointers for future research are stated in the [Conclusions](#end) section.
 
+
 # State of the art {#sota}
 Over the past decades, several strategies have been devised, in order to avoid the burden of conducting strenuous acoustical measurements with human subjects.
 In a recent review, Guezenoc [@guezenoc_hrtf_2018] divides such alternative approaches into _numerical simulation_, _anthropometrics_-based, and _perceptual feedback_-based.
@@ -33,15 +34,51 @@ In 2018, Lee [@lee_personalized_2018] develops a double-branched neural network 
 Again in 2017, Yamamoto [@yamamoto_fully_2017] trains a variational autoencoder on HRTF data, and devises a perceptual calibration procedure to fine-tune the latent variable used as input by the generative part of the model.
 Finally, in 2019, Chen et al. [@chen_autoencoding_2019] train an autoencoder to reconstruct HRTFs along the horizontal plane, and subsequently uses the resulting latent representations as targets for a multilayer perceptron which feeds on anthropometric data and azimuth angle, allowing users to synthesize new HRTFs using the MLP and decoder.
 
+
 # Methods {#methods}
 This section presents some of the most relevant computational methods found in the relevant literature on HRTF individualization.
 The aspects covered in the following subsections include the encoding of generated HRTFs, the extraction and choice of predictors, and the deep neural network architectures adopted.
 
 ## HRTF representation {#repr}
-single HRTF, 2d repr, 3d repr, patch [@yamamoto_fully_2017], principal components
+A single HRTF is defined as the the far-field frequency response of a given ear, measured from a point in the free field to a point in the ear canal [@cheng_introduction_2001].
+An HRTF set is composed of the HRTFs of both left and right ears, measured at a fixed radius from the head, and across several elevations and azimuths.
+According to Kulkarni et al. [@kulkarni_minimum-phase_1995], HRTFs specified as minimum-phase FIR filters have been empirically proved to be perceptually acceptable. 
+Thus, HRTFs can be stripped of the ITD information and stored as real-valued log-magnitude response.
 
-## Anthropometric data extraction {#anthr}
-FABIAN dataset [fabian_hutubs_2019], depthmaps, CIPIC [algazi_cipic_2001] anthropometric parameters
+While this is the preferred way of storing, exchanging, and using HRTF sets, neural networks have different requirements that call for ad-hoc formats.
+In particular, Yamamoto [@yamamoto_fully_2017] uses different representations for the input and output of his autoencoder.
+The input data format, which is dubbed _HRTF patch_, consists of a 4-dimensional tensor of shape $(5 \times 5 \times 128 \times 4)$. 
+The first two dimension describe the HRTF under investigation and its neighbors along the elevation and azimuth directions, for a total of 25 HRTFs in each given patch.
+The remaining ones describe the content of each HRTF in the patch: the last dimension, also called _channel_, encodes frequency power spectrum or time-domain signal for either left or right ear, where 128 is their length.
+This data representation provides a substantial amount of contextual information, which can be learnt by 3D-convolutional layers.
+
+The output of the autoencoder does not contain any neighbor HRTF, but instead of encoding the frequency power spectrum or time-domain information as a continuous signals, it uses a quantized format where each sample can have one of 256 possible discrete values that are then mapped to another dimension using one-hot encoding.
+The continuos signals can be reconstructed by taking the index of the value with highest magnitude and passing it to a µ-law algorithm.
+This strategy makes sure to retain some of the high-frequency details of the continuous signals, which are often lost when reconstructing data with  autoencoders, and can be found in certain WaveNet implementations [@oord_wavenet:_2016].
+
+Further formats which have been investigated include mappings where HRTFs sharing the same azimuth or elevation are combined in a 2-dimensional image-like representation with either elevation or azimuth along one axis and frequency along the other; the color of each pixel would then represent the log-magnitude of the spectrum.
+The structure expressed by adjacent HRTFs could therefore be learnt using 2D-convolutional layers.
+However, the downside of combining data in this way is the reduction of available data points to use for training.
+
+Finally, a compact representation for individual HRTFs has been proposed, consisting of the first $N$ principal components of the HRTF.
+While it has been observed that as little as 10 components are enough to reconstruct the original HRTF with maximum $1 dB$ of spectral distortion, the loadings of the PCA must be learned, and become an essential part of the representation.
+
+
+## User data extraction {#anthr}
+A fundamental aspect of HRTF individualization is the kind of data used to personalize the frequency response.
+Most often, acquiring data about a subject is faster and less strenuous than collecting an entire HRTF set, as well as having looser requirements in terms of external conditions and tools.
+The kind of data that can be collected comprises anthropometric measurements, other anthropometric data, and perceptual feedback.
+
+The CIPIC dataset [@algazi_cipic_2001] released in 2001 sets a convention for anthropometric data collection and reporting, which has been adopted by later datasets too [@fabian_hutubs_2019].
+Its format specifies 17 anthropometric parameters for head and torso, and 10 for the pinna.
+This data has the disadvantage of having loosely defined measurement points, which translate into systematic biases that make merging different datasets particularly prone to errors.
+Moreover, anthropometric features are only unique for each given subject and as such, may not have enough predictive power to be used for the regression of several HRTFs per subject.
+Spagnol et al. address this shortcoming by introducing elevation-dependent anthropometric measurements as predictors [@spagnol_frequency_2015].
+
+Another source of useful predictors for regression and prediction tasks may be found in 3-dimensional representation of the subjects' pinnae and head.
+CONTINUE FROM HERE
+
+FABIAN dataset [fabian_hutubs_2019], depthmaps, CIPIC  anthropometric parameters
 
 ## Autoencoder {#ae}
 Most conventional neural networks are employed to predict a target $y$ from an input $x$ in a supervised manner.
@@ -65,6 +102,12 @@ However, there exists no way of generating a specific HRTF --- i.e. one for a gi
 The class of autoencoders described below aims at addressing this shortcoming.
 
 ### Conditional variational autoencoder (CVAE) {#cvae}
+CVAEs are an extension of variational autoencoders, where an input data labels $c$ modulate the prior distribution of the latent variables that generate the output [@sohn_learning_2015].
+Thus, the encoder is formulated as $q_{\theta}(z|x,c)$, meaning that the encoding process is further conditioned by an attribute $c$, instead of the data content $x$ alone.
+Furthermore, the decoder is also conditioned by the label, so that it models $p_{\phi}(x|z,c)$.
+The influence of the label $c$ is incorporated into the VAE structure by means of concatenating its value to the input data $x$ before feeding it into the encoder, as well as to the latent variables $z$ before feeding them into the decoder.
+Yamamoto [@yamamoto_fully_2017] uses a customized deep CVAE, where labels consisting of a subject's ID and a spatial orientation, both provided as one-hot encoded vectors, are used to condition each layer of the encoder and decoder.
+
 
 ## Architectures and models {#models}
 
@@ -75,15 +118,24 @@ Introduce the three main themes.
 
 ## Autoencoding ear images {#vae-ear}
 
+
 ## Autoencoding HRTFs {#vae-hrtf}
 
+
 ## Autoencoding principal components {#vae-pca}
+
 
 ### Predicting principal components {#dnn}
 
 
-
 # Conclusions {#end}
+[//]: # (synthesis)
+This work presented some of the most promising advances in HRTF individualization,  introduced the deep learning technologies associated with them, and detailed the results of the replication efforts and further experiments based on the underlying knowledge base.
+
+[//]: # (limitation)
+
+
+[//]: # (outline)
 
  [@romigh_efficient_2015]
 
