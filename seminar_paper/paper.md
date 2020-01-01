@@ -63,7 +63,6 @@ However, the downside of combining data in this way is the reduction of availabl
 Finally, a compact representation for individual HRTFs has been proposed, consisting of the first $N$ principal components of the HRTF.
 While it has been observed that as little as 10 components are enough to reconstruct the original HRTF with maximum $1 dB$ of spectral distortion, the loadings of the PCA must be learned, and become an essential part of the representation.
 
-
 ## User data extraction {#anthr}
 A fundamental aspect of HRTF individualization is the kind of data used to personalize the frequency response.
 Most often, acquiring data about a subject is faster and less strenuous than collecting an entire HRTF set, as well as having looser requirements in terms of external conditions and tools.
@@ -74,11 +73,18 @@ Its format specifies 17 anthropometric parameters for head and torso, and 10 for
 This data has the disadvantage of having loosely defined measurement points, which translate into systematic biases that make merging different datasets particularly prone to errors.
 Moreover, anthropometric features are only unique for each given subject and as such, may not have enough predictive power to be used for the regression of several HRTFs per subject.
 Spagnol et al. address this shortcoming by introducing elevation-dependent anthropometric measurements as predictors [@spagnol_frequency_2015].
+These features consists in the lengths of the segments spanning from the tragus to each of the three contours outlined by the helix and concha, and oriented according to the elevation angle under investigation.
 
 Another source of useful predictors for regression and prediction tasks may be found in 3-dimensional representation of the subjects' pinnae and head.
-CONTINUE FROM HERE
+Recent HRTF datasets include digital scans of the heads and pinnae [@fabian_hutubs_2019, @spagnol_viking_2019] stored as 3D models, which can be used for feature extraction. 
+In particular, 2-dimensional projections such as digital renderings or depth maps can be conveniently processed in neural networks using convolutional and pooling layers.
+As mentioned in the following sections, convolutional autoencoders can be used to extract salient features from ear images, which can then be used as predictors.
 
-FABIAN dataset [fabian_hutubs_2019], depthmaps, CIPIC  anthropometric parameters
+Finally, perceptual feedback can be useful when collecting manual measurements or complex user data is not viable. 
+Furthermore, this kind of data is more resilient to systematic errors and biases introduced by measurement procedures [@guezenoc_hrtf_2018].
+Perceptual feedback often consists in letting a user evaluate and rate the performance of a given HRTF set, and is most commonly adopted in HRTF selection or adaptation tasks.
+Nevertheless, Yamamoto uses perceptual feedback to navigate the latent space in order to synthesize suitable HRTFs for a given user [@yamamoto_fully_2017]. 
+It is worth noting how, while validating models based on anthropometric data is quite trivial, models using perceptual data requires a user study or the implementation of a virtual agent. 
 
 ## Autoencoder {#ae}
 Most conventional neural networks are employed to predict a target $y$ from an input $x$ in a supervised manner.
@@ -103,34 +109,92 @@ The class of autoencoders described below aims at addressing this shortcoming.
 
 ### Conditional variational autoencoder (CVAE) {#cvae}
 CVAEs are an extension of variational autoencoders, where an input data labels $c$ modulate the prior distribution of the latent variables that generate the output [@sohn_learning_2015].
-Thus, the encoder is formulated as $q_{\theta}(z|x,c)$, meaning that the encoding process is further conditioned by an attribute $c$, instead of the data content $x$ alone.
+Thus, the encoder is formulated as $q_{\theta}(z|x,c)$, meaning that the encoding process is conditioned by an attribute $c$, instead of the data content alone.
 Furthermore, the decoder is also conditioned by the label, so that it models $p_{\phi}(x|z,c)$.
 The influence of the label $c$ is incorporated into the VAE structure by means of concatenating its value to the input data $x$ before feeding it into the encoder, as well as to the latent variables $z$ before feeding them into the decoder.
 Yamamoto [@yamamoto_fully_2017] uses a customized deep CVAE, where labels consisting of a subject's ID and a spatial orientation, both provided as one-hot encoded vectors, are used to condition each layer of the encoder and decoder.
-
 
 ## Architectures and models {#models}
 
 
 # Results {#results}
-Introduce the three main themes.
-
+The research conducted as part of this work can be grouped into three main areas, which are related to feature extraction to use as predictors, unsupervised learning of HRTF data based on the deep autoencoder network in [@yamamoto_fully_2017], and synthesis of HRTFs from anthropometric data using deep multilayer perceptrons and principal component analysis, inspired by the work of Chen et al. [@chen_autoencoding_2019].
+The following subsections elaborate on the aforementioned topics.
 
 ## Autoencoding ear images {#vae-ear}
+[//]: # (intro)
+The limitations of anthropometric measurements mentioned in section \ref{anthr}, together with with the limits of their predicting power highlighted by a previous work [@miccini_estimation_2019], prompted the exploration of alternative features to be used in HRTF prediction tasks.
+Features from pinna images have been previously extracted using convolutional neural networks, for the purpose of biometrics-based identification [@bansal_convolutional_2019].
+Thus, convolutional layers have been employed in a variational autoencoder in order to derive salient features from its compact representation in an unsupervised manner.
 
+[//]: # (depthmaps extraction)
+Digital renderings of the z-channel (also known as depth maps) of the 3D models in the HUTUBS dataset [@fabian_hutubs_2019] have been extracted, using the `pyrender` and `trimesh` packages for Python, and converted into 8-bit grayscale images.
+For each of the 55 unique head meshes, the point of view has been placed on either side of the head, so as to show each pinna separately.
+
+[//]: # (processing and augmentation)
+In order to increase the amount of images used for training, several data augmentation techniques have been adopted.
+Firstly, variations of the point of view have been introduced, by tilting the camera along both elevation and azimuth.
+Secondly, slight vertical and horizontal offsets have also been introduced.
+Lastly, each of the images thus generated has been duplicated and processed with sparse, discrete noise.
+A tool for filtering out the images, based on the augmentation parameters, has been developed, allowing the size of the dataset used for training to be anywhere from a few pictures to well over a million.
+
+[//]: # (network variations)
+The model used in this experiment is a convolutional variational autoencoder.
+This architecture is similar to the one described in section \ref{vae}, except it uses 2D-convolutional layers.
+In the encoder, several dimensionality reduction techniques have been tested, such as _max pooling_ layers or _strides_ in the convolutional kernels, with no discernible difference in performances.
+Similarly, the decoder part has been originally implemented using transpose convolution with strides, which caused noticeable artifacts in the output images.
+In order to address this, a combination of _upsampling_ layers and regular convolution has instead been used [@odena2016deconvolution].
+The hyperparameters of the architecture included the number of stacked layers, the number of convolutional filters for each layer, the number of latent dimensions, and batch normalization.
+
+[//]: # (evaluation criteria)
+Multiple experiments have been conducted, using different combinations of input data and model hyperparameters.
+The main criterion for evaluating the model effectiveness is the quality of the reconstruction.
+Indeed, images that have been faithfully reconstructed are indicative of a meaningful compact representation that can effectively encode the characteristics of the pinnae; conversely, ear pictures that fail to be distinguishable from those from different subjects are not satisfactory.
+Furthermore, it is expected that latent variables show some degree of correlation with the anthropometric measurements related to the pinna, since --- given an effectively trained model  --- they would both encode similar information.
+
+The experiments have shown how, while the elevation and azimuth dependent data augmentations expose or hide different parts of the pinnae thereby affecting their appearance, most of the variance in the data occurs in the surrounding area of the head, with is of no interest.
+This resulted in latent variables encoding mostly features related to the gradient in the background areas, while pinnae appear blurry and undistinguishable.
+Using data rendered from the same point of view and only augmenting the data using noise seems to alleviate the problem, but the decrease in available training data negatively affects generalization, causing severe artifacts when sampling the latent space.
+Furthermore, the compact representation of the data points exhibited little to no correlation with the anthropometric measurements.
 
 ## Autoencoding HRTFs {#vae-hrtf}
+[//]: # (intro)
+Synthesizing HRTFs from a set of given parameters is a fundamental aspect of the individualization task.
+Since it is not yet fully understood what these parameters could be, it might be interesting to let a neural network derive its own by means of autoencoding the HRTFs.
+These parameters can then be the target of another prediction task [@chen_autoencoding_2019] or adjusted through perceptual feedback from the user [@yamamoto_fully_2017].
+Therefore, several VAE models have been developed and trained, using different data formats and architectures.
+
+[//]: # (network variations)
+The architecture of the networks employed in this series of experiments in heavily dependant on the data layout.
+
+- 3d, 2d, 1d
+- choice of content in 2d
+- ResNet
+
+[//]: # (evaluation criteria, remarks)
+- similarity
 
 
-## Autoencoding principal components {#vae-pca}
+## Predicting principal components {#dnn-pca}
+[//]: # (intro)
+- inspired by [@chen_autoencoding_2019]
+- general principles
 
+[//]: # (network variations)
+- pass angles to each layer
+- hyperparams
 
-### Predicting principal components {#dnn}
+[//]: # (evaluation criteria, remarks)
+- spectral distortion
+- k-fold validation
+
 
 
 # Conclusions {#end}
 [//]: # (synthesis)
 This work presented some of the most promising advances in HRTF individualization,  introduced the deep learning technologies associated with them, and detailed the results of the replication efforts and further experiments based on the underlying knowledge base.
+
+While none of the three domains of investigation has shown outstanding result, the knowledge acquired throughout the development and troubleshooting phases highlighted areas of improvement which can pave the way to further research.
 
 [//]: # (limitation)
 
