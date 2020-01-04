@@ -13,9 +13,9 @@ Recently, attempts have been performed at synthesizing or customizing HRTFs usin
 [//]: # (research question, roadmap)
 This paper investigates methods for generating individualized HRTFs, in particular using newly-developed deep learning algorithms, and further expands on the topic by documenting the replication attempts and experiments conducted as part of the research.
 In the next section, the most recent contributions to the field are introduced.
-The [Methods](#methods) section details the computational techniques used in selected works from the literature as well as in the research carried out as part of the seminar, with particular focus on deep learning methods.
-In [Results](#results), the applications and outcomes of the aforementioned techniques for replications and other experiments are discussed, with the purpose of assessing their effectiveness. 
-Finally, closing remarks as well as pointers for future research are stated in the [Conclusions](#end) section.
+Section \ref{methods} details the computational techniques used in selected works from the literature as well as in the research carried out as part of the seminar, with particular focus on deep learning methods.
+In Section \ref{results}, the applications and outcomes of the aforementioned techniques for replications and other experiments are discussed, with the purpose of assessing their effectiveness. 
+Finally, closing remarks as well as pointers for future research are stated in Section \ref{end}.
 
 
 # State of the art {#sota}
@@ -28,16 +28,18 @@ With the help of databases of publicly available HRTFs and machine learning tech
 In 2010, Zeng [@zeng_hybrid_2010] implements an hybrid model based on principal component analysis (PCA) and multiple linear regression, which uses anthropometric parameters to select the most suitable HRTF set for the given user.
 Similarly, user feedback on perceptual tests can be used to inform regression models for tasks such as those listed above.
 
-In more recent times, there has been an interest in solving the aforementioned tasks using deep learning techniques.
+![Overview of the algorithm from [@yamamoto_fully_2017] during training and usage phases.\label{yama2017}](img/yamamoto2017.png){scale=0.5}
+
+In more recent times, there has been an interest in solving these tasks using deep learning techniques.
 In 2017, Yao [@yao_head-related_2017] uses anthropometric measurements to select the most suitable HRTF sets from a larger database.
 In 2018, Lee [@lee_personalized_2018] develops a double-branched neural network that processes anthropometric data with a multi-layer perceptron and edge-detected pictures of the ear with convolutional layers, combining the outputs of the two into a third network to estimate HRTF sets.
-Again in 2017, Yamamoto [@yamamoto_fully_2017] trains a variational autoencoder on HRTF data, and devises a perceptual calibration procedure to fine-tune the latent variable used as input by the generative part of the model.
-Finally, in 2019, Chen et al. [@chen_autoencoding_2019] train an autoencoder to reconstruct HRTFs along the horizontal plane, and subsequently uses the resulting latent representations as targets for a multilayer perceptron which feeds on anthropometric data and azimuth angle, allowing users to synthesize new HRTFs using the MLP and decoder.
+Again in 2017, Yamamoto [@yamamoto_fully_2017] trains a variational autoencoder on HRTF data, and devises a perceptual calibration procedure --- illustrated in Fig. \ref{yama2017} --- to fine-tune the latent variable used as input by the generative part of the model.
+Finally, in 2019, Chen et al. [@chen_autoencoding_2019] train an autoencoder to reconstruct HRTFs along the horizontal plane, and subsequently uses the resulting latent representations as targets for a multilayer perceptron which feeds on anthropometric data and azimuth angle, allowing users to synthesize new HRTFs using the MLP and decoder --- this is shown in Fig. \ref{chen2019}.
 
 
 # Methods {#methods}
 This section presents some of the most relevant computational methods found in the relevant literature on HRTF individualization.
-The aspects covered in the following subsections include the encoding of generated HRTFs, the extraction and choice of predictors, and the deep neural network architectures adopted.
+The aspects covered in the following subsections include the encoding of generated HRTFs, the extraction and choice of viable predictors, and the deep neural network architectures adopted.
 
 ## HRTF representation {#repr}
 A single HRTF is defined as the the far-field frequency response of a given ear, measured from a point in the free field to a point in the ear canal [@cheng_introduction_2001].
@@ -45,31 +47,38 @@ An HRTF set is composed of the HRTFs of both left and right ears, measured at a 
 According to Kulkarni et al. [@kulkarni_minimum-phase_1995], HRTFs specified as minimum-phase FIR filters have been empirically proved to be perceptually acceptable. 
 Thus, HRTFs can be stripped of the ITD information and stored as real-valued log-magnitude response.
 
+![Data structure, called _HRTF patch_, used [@yamamoto_fully_2017] as input to the autoencoder.\label{hrtf_patch}](img/hrtf_patch.png){scale=0.5}
+
+
 While this is the preferred way of storing, exchanging, and using HRTF sets, neural networks have different requirements that call for ad-hoc formats.
 In particular, Yamamoto [@yamamoto_fully_2017] uses different representations for the input and output of his autoencoder.
 The input data format, which is dubbed _HRTF patch_, consists of a 4-dimensional tensor of shape $(5 \times 5 \times 128 \times 4)$. 
 The first two dimension describe the HRTF under investigation and its neighbors along the elevation and azimuth directions, for a total of 25 HRTFs in each given patch.
 The remaining ones describe the content of each HRTF in the patch: the last dimension, also called _channel_, encodes frequency power spectrum or time-domain signal for either left or right ear, where 128 is their length.
 This data representation provides a substantial amount of contextual information, which can be learnt by 3D-convolutional layers.
+The structure of the HRTF patch can be seen in Fig. \ref{hrtf_patch}.
 
 The output of the autoencoder does not contain any neighbor HRTF, but instead of encoding the frequency power spectrum or time-domain information as a continuous signals, it uses a quantized format where each sample can have one of 256 possible discrete values that are then mapped to another dimension using one-hot encoding.
 The continuos signals can be reconstructed by taking the index of the value with highest magnitude and passing it to a µ-law algorithm.
-This strategy makes sure to retain some of the high-frequency details of the continuous signals, which are often lost when reconstructing data with  autoencoders, and can be found in certain WaveNet implementations [@oord_wavenet:_2016].
+This strategy --- which can be found in certain WaveNet implementations [@oord_wavenet:_2016] --- makes sure to retain some of the high-frequency details of the continuous signals, which are often lost when reconstructing data with  autoencoders.
 
 Further formats which have been investigated include mappings where HRTFs sharing the same azimuth or elevation are combined in a 2-dimensional image-like representation with either elevation or azimuth along one axis and frequency along the other; the color of each pixel would then represent the log-magnitude of the spectrum.
 The structure expressed by adjacent HRTFs could therefore be learnt using 2D-convolutional layers.
 However, the downside of combining data in this way is the reduction of available data points to use for training.
 
 Finally, a compact representation for individual HRTFs has been proposed, consisting of the first $N$ principal components of the HRTF.
-While it has been observed that as little as 10 components are enough to reconstruct the original HRTF with maximum $1 dB$ of spectral distortion, the loadings of the PCA must be learned, and become an essential part of the representation.
+While it has been observed that as little as 20 components are enough to reconstruct the original HRTF with maximum 1.6 dB of spectral distortion (see Fig. \ref{eardnnhrtf_res}, left side), the loadings of the PCA must be learned, and become an essential part of the representation.
 
 ## User data extraction {#anthr}
 A fundamental aspect of HRTF individualization is the kind of data used to personalize the frequency response.
 Most often, acquiring data about a subject is faster and less strenuous than collecting an entire HRTF set, as well as having looser requirements in terms of external conditions and tools.
-The kind of data that can be collected comprises anthropometric measurements, other anthropometric data, and perceptual feedback.
+The kind of data that can be collected comprises anthropometric measurements, complex anthropometric data, and perceptual feedback.
+
+![Anthropometric measurements as listed on the CIPIC dataset [@algazi_cipic_2001].\label{anthro}](img/anthro.png){scale=0.5}
+
 
 The CIPIC dataset [@algazi_cipic_2001] released in 2001 sets a convention for anthropometric data collection and reporting, which has been adopted by later datasets too [@fabian_hutubs_2019].
-Its format specifies 17 anthropometric parameters for head and torso, and 10 for the pinna.
+Its format specifies 17 anthropometric parameters for head and torso, and 10 for the pinna, which can be seen in Fig. \ref{anthro}.
 This data has the disadvantage of having loosely defined measurement points, which translate into systematic biases that make merging different datasets particularly prone to errors.
 Moreover, anthropometric features are only unique for each given subject and as such, may not have enough predictive power to be used for the regression of several HRTFs per subject.
 Spagnol et al. address this shortcoming by introducing elevation-dependent anthropometric measurements as predictors [@spagnol_frequency_2015].
@@ -90,6 +99,10 @@ It is worth noting how, while validating models based on anthropometric data is 
 Most conventional neural networks are employed to predict a target $y$ from an input $x$ in a supervised manner.
 On the other hand, autoencoders learn a compressed representation $z$ of the input data $x$ called _latent representation_, which is then used to generate a reconstructed version $\hat{x}$.
 The purpose of autoencoders is to learn useful features from the input data in an unsupervised manner [@goodfellow_deep_2016].
+One such example can be seen in Fig. \ref{chen2019}, where an autoencoder is used to derive a compact representation from HRTFs, which can then be used as the target of a prediction task.
+
+![Architecture proposed by [@chen_autoencoding_2019], with HRTF autoencoder and deep neural network for latent representation estimation from anthropometry; solid arrows indicate training process, dotted arrows indicate usage.\label{chen2019}](img/chen2019.png){scale=0.5}
+
 
 Autoencoders usually consists of a feed-forward neural network composed of two sub-nets: an encoder network $f()$ and a decoder network $g()$ such that $g(f(x)) = g(z) = \hat{x}$.
 Training an autoencoder usually involves iteratively updating the weights and biases of the two networks through backpropagation, in order to minimize a cost function representing the mean squared error (MSE) between $x$ and $\hat{x}$.
@@ -125,7 +138,7 @@ The following subsections elaborate on the aforementioned topics.
 
 ## Autoencoding ear images {#vae-ear}
 [//]: # (intro)
-The limitations of anthropometric measurements mentioned in section \ref{anthr}, together with with the limits of their predicting power highlighted by a previous work [@miccini_estimation_2019], prompted the exploration of alternative features to be used in HRTF prediction tasks.
+The limitations of anthropometric measurements mentioned in Section \ref{anthr}, together with with the limits of their predicting power highlighted by a previous work [@miccini_estimation_2019], prompted the exploration of alternative features to be used in HRTF prediction tasks.
 Features from pinna images have been previously extracted using convolutional neural networks, for the purpose of biometrics-based identification [@bansal_convolutional_2019].
 Thus, convolutional layers have been employed in a variational autoencoder in order to derive salient features from its compact representation in an unsupervised manner.
 
@@ -139,10 +152,13 @@ Firstly, variations of the point of view have been introduced, by tilting the ca
 Secondly, slight vertical and horizontal offsets have also been introduced.
 Lastly, each of the images thus generated has been duplicated and processed with sparse, discrete noise.
 A tool for filtering out the images, based on the augmentation parameters, has been developed, allowing the size of the dataset used for training to be anywhere from a few pictures to well over a million.
+Fig. \ref{depthmap_vars} shows the azimuth and elevation variations for a given subjects.
+
+![Pinna depth map for a given subject, over a grid of different azimuth and elevation angles.\label{depthmap_vars}](img/depthmap_vars.png){scale=0.5}
 
 [//]: # (network variations)
 The model used in this experiment is a convolutional variational autoencoder.
-This architecture is similar to the one described in section \ref{vae}, except it uses 2D-convolutional layers.
+This architecture is similar to the one described in Section \ref{vae}, except it uses 2D-convolutional layers.
 In the encoder, several dimensionality reduction techniques have been tested, such as _max pooling_ layers or _strides_ in the convolutional kernels, with no discernible difference in performances.
 Similarly, the decoder part has been originally implemented using transpose convolution with strides, which caused noticeable artifacts in the output images.
 In order to address this, a combination of _upsampling_ layers and regular convolution has instead been used [@odena2016deconvolution].
@@ -154,10 +170,12 @@ The main criterion for evaluating the model effectiveness is the quality of the 
 Indeed, images that have been faithfully reconstructed are indicative of a meaningful compact representation that can effectively encode the characteristics of the pinnae; conversely, ear pictures that fail to be distinguishable from those from different subjects are not satisfactory.
 Furthermore, it is expected that latent variables show some degree of correlation with the anthropometric measurements related to the pinna, since --- given an effectively trained model  --- they would both encode similar information.
 
+![True and reconstructed pinna depth maps, using a convolutional VAE and data from only the frontal point of view.\label{depthmap_rec}](img/depthmap_rec.png){scale=0.5}
+
 [//]: # (remarks)
 The experiments have shown how, while the elevation and azimuth dependent data augmentations expose or hide different parts of the pinnae thereby affecting their appearance, most of the variance in the data occurs in the surrounding area of the head, with is of no interest.
 This resulted in latent variables encoding mostly features related to the gradient in the background areas, while pinnae appear blurry and undistinguishable.
-Using data rendered from the same point of view and only augmenting the data using noise seems to alleviate the problem, but the decrease in available training data negatively affects generalization, causing severe artifacts when sampling the latent space.
+Using data rendered from the same point of view and only augmenting the data using noise seems to alleviate the problem, as seen in the reconstruction in Fig. \ref{depthmap_rec}, but the decrease in available training data negatively affects generalization, causing severe artifacts when sampling the latent space.
 Furthermore, the compact representation of the data points exhibited little to no correlation with the anthropometric measurements.
 
 
@@ -169,7 +187,7 @@ These parameters can then be the target of another prediction task [@chen_autoen
 Therefore, several VAE models have been developed and trained, using different data layouts and architectures.
 
 [//]: # (network variations)
-The architecture of the networks employed in this series of experiments is heavily dependant on the data formats, which are described in section \ref{repr}.
+The architecture of the networks employed in this series of experiments is heavily dependant on the data formats, which are described in Section \ref{repr}.
 In particular, given different dimensionalities, the following applies: 
 
 - 3D: HRTF patch, processed using 3D-convolutional layers; only the middle HRTF is reconstructed
@@ -185,11 +203,13 @@ For each scenario, a different number of convolutional filters, convolutional la
 Just as for the pinna images case, the main goals here are a satisfactory reconstruction of the input and a meaningful latent space mapping.
 While the former can be assessed using quantitative metrics such as the _spectral distortion_ (SD) between true and reconstructed HRTF, the latter is a more elusive property which can be inferred from the correlation with known HRTF predictors such as certain pinna anthropometric data, or azimuth and elevation angles.
 
+![True (blue) and reconstructed (orange) HRTFs from different test subjects at different azimuth and elevation angles, using a convolutional VAE with residual layers.\label{vae_hrtf_rec}](img/vae_hrtf_rec.png){scale=0.5}
+
 [//]: # (remarks)
 The experiments conducted so far show poor reconstruction performances and little correlation with the aforementioned variables, highlighting the need for more sophisticated models or more effective data representations.
 Indeed, reconstructed 2D and 1D representations appear blurry and lacking sharpness on the distinctive notches and peaks of the HRTFs.
 Similarly, the one-hot output encoding used in the 3D experiments results in mostly erratic behavior, most likely due to the lack of the gaussian distribution constructed along the quantized levels dimension [@yamamoto_fully_2017].
-More promising are the 1D experiments using deep residual layers, which may suggest that a deeper network and a larger dataset are more beneficial to the training process than contextual data.
+More promising are the 1D experiments using deep residual layers --- they can be observed in Fig. \ref{vae_hrtf_rec} --- which may suggest that a deeper network and a larger dataset are more beneficial to the training process than contextual data.
 However, the average SD on the test set is about 5.2 dB.
 
 ## Predicting principal components {#dnn-pca}
@@ -210,12 +230,14 @@ The setup used for these experiments implement a potential HRTF individualizatio
 Thus, the entire system has been embedded in a 10-fold validation routine where, for each iteration, a train set comprising $\frac{9}{10}$ of the data was used to fit the neural network and calculate the PCA loadings, whereas a smaller test set with the remaining $\frac{1}{10}$ was used for validation.
 The metric observed throughout the process is the spectral distortion of the HRTF, calculated between 3 and 16 kHz.
 
+![Box-and-whiskers plots for HRTF reconstruction using 20 principal components (left) and HRTF synthesis from anthropometric data and 40 pinna depth map principal components using a deep neural network (right), across 10 validation folds.\label{eardnnhrtf_res}](img/eardnnhrtf_res.png){scale=0.5}
+
 [//]: # (remarks)
 The results of using only anthropometric measurements --- along with elevation and azimuth angles --- as predictors is an average SD of 4.5 dB and 4.7 dB for training and test sets respectively.
 While this is indeed promising, upon close inspection most generated HRTFs look similar, and while the general trend of the spectrum is correct, the sharp spectral features are not clearly distinguishable.
 When trying to derive principal components from the pinna depth maps, a large number of principal components proves necessary for a satisfactory reconstruction, and reconstruction of the data in the test set is always poor.
 Thus, the features obtained from the principal components fail at generalizing the characteristics of the pinna, and result in poorer performances with more severe overfitting.
-A model combining both predictors has also been tested, peaking at 3.9 dB and 4.9 dB of SD for training and test sets respectively.
+A model combining both predictors has also been tested, peaking at 4.1 dB and 4.7 dB of SD for training and test sets respectively, as shown in Fig. \ref{eardnnhrtf_res}.
 
 
 # Conclusions {#end}

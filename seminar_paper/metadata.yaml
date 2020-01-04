@@ -12,11 +12,11 @@ numbersections: yes
 lang: en
 babel-lang: english
 abstract: |
-  The research presented in this paper focuses on investigating HRTF individualization using deep learning techniques. 
-  HRTF individualization is paramount for accurate binaural rendering used in VR technologies and and tools for visually impaired.
-  Three main areas have been investigated, through literature review, the implementation of computational models, and experiments with different input data.
-  These related to the extraction of predictors from user data, unsupervised learning of HRTFs based on autoencoder networks, and synthesis of HRTFs from anthropometric data using deep multilayer perceptrons and principal component analysis.
-  The major technologies researched and used in this work are autoencoders and their extensions, convolutional networks, as well as other macihne learning methods such as PCA.
+  The research presented in this paper focuses on HRTF individualization using deep learning techniques. 
+  HRTF individualization is paramount for accurate binaural rendering, which is used in VR technologies and and tools for the visually impaired.
+  Three main areas have been investigated through literature review, implementation of computational models, and experiments with different input data.
+  These areas comprise the extraction of predictors from user data, unsupervised learning of HRTFs based on autoencoder networks, and synthesis of HRTFs from anthropometric data using deep multilayer perceptrons and principal component analysis.
+  The major technologies researched and used in this work are autoencoders and related extensions, convolutional networks, as well as other machine learning techniques such as PCA.
   While none of the aforementioned domains of investigation has shown outstanding results, the knowledge acquired throughout the development and troubleshooting phases highlighted areas of improvement which can pave the way to more successful research.
 
 bibliography: [bibliography.bib]
