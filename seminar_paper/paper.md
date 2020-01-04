@@ -207,11 +207,12 @@ While the former can be assessed using quantitative metrics such as the _spectra
 ![True (blue) and reconstructed (orange) HRTFs from different test subjects at different azimuth and elevation angles, using a convolutional VAE with residual layers.\label{vae_hrtf_rec}](img/vae_hrtf_rec.png){scale=0.5}
 
 [//]: # (remarks)
-The experiments conducted so far show poor reconstruction performances and little correlation with the aforementioned variables, highlighting the need for more sophisticated models or more effective data representations.
+The experiments conducted so far show poor to mediocre reconstruction performances and little correlation with the aforementioned anthropometric variables, highlighting the need for more sophisticated models or more effective data representations.
 Indeed, reconstructed 2D and 1D representations appear blurry and lacking sharpness on the distinctive notches and peaks of the HRTFs.
+For the 1D case, which can be observed in Fig. \ref{vae_hrtf_rec}, the average SD on the test set is as high as 5.2 dB.
 Similarly, the one-hot output encoding used in the 3D experiments results in mostly erratic behavior, most likely because without the gaussian distribution constructed along the quantized levels dimension [@yamamoto_fully_2017], the reconstruction task proves too difficult.
-More promising are the 1D experiments using deep residual layers --- they can be observed in Fig. \ref{vae_hrtf_rec} --- which may suggest that a deeper network and a larger dataset are more beneficial to the training process than contextual data.
-However, the average SD on the test set is as high as 5.2 dB.
+The most promising results are related to the 2D elevation-frequency representation using convolutional layers, which may suggest how contextual data can aid the training process; however, the reduced amount of data points negatively impacts the generalization capabilities of the models.
+
 
 ## Predicting principal components {#dnn-pca}
 [//]: # (intro)
